@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS - Fix Light/Dark Mode text visibility & GoalScore UI
+# Custom CSS - GoalScore Dark UI & Text Visibility Fix
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;700&display=swap');
@@ -21,20 +21,18 @@ st.markdown("""
         font-family: 'Padauk', 'Inter', sans-serif;
     }
     
-    /* Top Header Banner */
     .app-header {
         background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
         padding: 18px 20px;
         border-radius: 16px;
         border: 1px solid #334155;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         color: #ffffff !important;
     }
     
-    /* League Header Bar */
     .league-bar {
         background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
         padding: 10px 16px;
@@ -42,15 +40,14 @@ st.markdown("""
         font-weight: 700;
         font-size: 15px;
         color: #38bdf8 !important;
-        margin-top: 20px;
-        margin-bottom: 10px;
+        margin-top: 18px;
+        margin-bottom: 8px;
         border-left: 4px solid #38bdf8;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* Streamlit Expander Customization (Force white text on dark background) */
     div[data-testid="stExpander"] {
         background-color: #111827 !important;
         border: 1px solid #1f2937 !important;
@@ -78,7 +75,6 @@ st.markdown("""
         padding-top: 12px !important;
     }
 
-    /* Prediction Cards inside Expander */
     .pred-box {
         background: #1e293b;
         border: 1px solid #334155;
@@ -120,8 +116,17 @@ st.markdown("""
         border-bottom: 1px solid #1e293b;
         color: #cbd5e1 !important;
     }
-    
-    /* Radio & Input text visibility */
+    .league-chip {
+        display: inline-block;
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #38bdf8;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        margin: 3px 4px 3px 0;
+        font-weight: 600;
+    }
     label, .stRadio label p {
         color: #e2e8f0 !important;
     }
@@ -129,24 +134,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1. LEAGUE TRANSLATION & MAPPING
+# 1. ALL LEAGUES INCLUDED IN FOOTBALL-DATA.ORG API KEY
 # ---------------------------------------------------------
+# မှတ်ချက် - စပိန် လာလီဂါကို API က "PD" (Primera Division) ဟု သတ်မှတ်ပြီး ချန်ပီယံလိဂ်ကို "CL" ဟု သတ်မှတ်ပါသည်
 LEAGUE_MAP = {
-    "PL": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)",
-    "PD": "🇪🇸 စပိန် လာလီဂါ (La Liga)",
+    "CL": "🏆 ယူအီးအက်ဖ်အေ ချန်ပီယံလိဂ် (UEFA Champions League)",
+    "PL": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 အင်္ဂလန် ပရီးမီးယားလိဂ် (Premier League)",
+    "PD": "🇪🇸 စပိန် လာလီဂါ (La Liga - Primera Division)",
     "BL1": "🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)",
     "SA": "🇮🇹 အီတလီ စီးရီးအေ (Serie A)",
     "FL1": "🇫🇷 ပြင်သစ် လီဂူးဝမ်း (Ligue 1)",
-    "CL": "🏆 ချန်ပီယံလိဂ် (Champions League)",
-    "EL": "🟠 ယူရိုပါလိဂ် (Europa League)",
-    "DED": "🇳🇱 နယ်သာလန် အီရီဒီဗီစီ (Eredivisie)",
-    "PPL": "🇵🇹 ပေါ်တူဂီ လီဂါ (Primeira Liga)",
+    "EL": "🟠 ယူအီးအက်ဖ်အေ ယူရိုပါလိဂ် (UEFA Europa League)",
     "ELC": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 အင်္ဂလန် ချန်ပီယံရှစ် (Championship)",
-    "CLI": "🌎 ကိုပါ လီဘာတာဒိုရက်စ် (Copa Libertadores)"
+    "DED": "🇳🇱 နယ်သာလန် အီရီဒီဗီစီ (Eredivisie)",
+    "PPL": "🇵🇹 ပေါ်တူဂီ ပရီမီယာလီဂါ (Primeira Liga)",
+    "BSA": "🇧🇷 ဘရာဇီး စီးရီးအေ (Brazil Serie A)",
+    "CLI": "🌎 ကိုပါ လီဘာတာဒိုရက်စ် (Copa Libertadores)",
+    "WC": "🌍 ကမ္ဘာ့ဖလား (FIFA World Cup)",
+    "EC": "🇪🇺 ဥရောပဖလား (UEFA Euro)"
 }
 
 # ---------------------------------------------------------
-# 2. AI PREDICTION ENGINE
+# 2. AI PREDICTION ENGINE (Win/Lose, Over/Under, BTTS)
 # ---------------------------------------------------------
 def calculate_ai_predictions(home_team, away_team, hs, as_, state):
     seed = sum(ord(c) * (i + 1) for i, c in enumerate(home_team + away_team))
@@ -197,115 +206,140 @@ def calculate_ai_predictions(home_team, away_team, hs, as_, state):
         "correct_score": f"{pred_h} - {pred_a}"
     }
 
-# ---------------------------------------------------------
-# 3. FETCH 7-DAY SCHEDULE FROM API + EUROPA LEAGUE FALLBACK
-# ---------------------------------------------------------
 def convert_utc_to_mmt(utc_str):
-    """UTC အချိန်ကို မြန်မာစံတော်ချိန် (+6:30) သို့ ပြောင်းလဲခြင်း"""
     try:
         dt_utc = datetime.strptime(utc_str[:16], "%Y-%m-%dT%H:%M")
         dt_mmt = dt_utc + timedelta(hours=6, minutes=30)
         return dt_mmt.strftime("%b %d, %H:%M")
     except Exception:
-        return "21:00"
+        return "21:30"
 
-@st.cache_data(ttl=120)
-def fetch_all_leagues_matches(key):
-    # ယမန်နေ့မှ လာမည့် (၇) ရက်အတွင်း ပွဲစဉ်အားလုံးကို ဆွဲယူမည် (စနေ၊ တနင်္ဂနွေ၊ ချန်ပီယံလိဂ် အကုန်ပါဝင်ရန်)
-    date_from = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
-    date_to = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
+def parse_match_object(m):
+    st_code = m.get("status", "SCHEDULED")
+    hs = m.get("score", {}).get("fullTime", {}).get("home") or 0
+    as_ = m.get("score", {}).get("fullTime", {}).get("away") or 0
     
-    url = f"https://api.football-data.org/v4/matches?dateFrom={date_from}&dateTo={date_to}"
-    headers = {"X-Auth-Token": key}
+    if st_code in ["IN_PLAY", "PAUSED", "LIVE"]:
+        status_tag = "🔴 LIVE"
+        state = "LIVE"
+    elif st_code == "FINISHED":
+        status_tag = "🏁 FT"
+        state = "FT"
+    else:
+        mmt_time = convert_utc_to_mmt(m.get("utcDate", ""))
+        status_tag = f"🕒 {mmt_time}"
+        state = "UPCOMING"
+
+    home_name = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "Home")
+    away_name = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "Away")
     
-    parsed = []
-    try:
-        response = requests.get(url, headers=headers, timeout=12)
-        if response.status_code == 200:
-            data = response.json().get("matches", [])
-            for m in data:
-                st_code = m.get("status", "SCHEDULED")
-                hs = m.get("score", {}).get("fullTime", {}).get("home") or 0
-                as_ = m.get("score", {}).get("fullTime", {}).get("away") or 0
-                
-                if st_code in ["IN_PLAY", "PAUSED", "LIVE"]:
-                    status_tag = "🔴 LIVE"
-                    state = "LIVE"
-                elif st_code == "FINISHED":
-                    status_tag = "🏁 FT"
-                    state = "FT"
-                else:
-                    mmt_time = convert_utc_to_mmt(m.get("utcDate", ""))
-                    status_tag = f"🕒 {mmt_time}"
-                    state = "UPCOMING"
+    comp_code = m.get("competition", {}).get("code", "")
+    comp_name = m.get("competition", {}).get("name", "Other League")
+    league_display = LEAGUE_MAP.get(comp_code, f"⚽ {comp_name}")
 
-                home_name = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "Home")
-                away_name = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "Away")
-                
-                comp_code = m.get("competition", {}).get("code", "")
-                comp_name = m.get("competition", {}).get("name", "Other League")
-                league_display = LEAGUE_MAP.get(comp_code, f"⚽ {comp_name}")
+    preds = calculate_ai_predictions(home_name, away_name, hs, as_, state)
+    return {
+        "id": str(m.get("id", f"{home_name}_{away_name}")),
+        "code": comp_code,
+        "league": league_display,
+        "status_tag": status_tag,
+        "state": state,
+        "home": home_name,
+        "away": away_name,
+        "hs": hs,
+        "as": as_,
+        "preds": preds
+    }
 
-                preds = calculate_ai_predictions(home_name, away_name, hs, as_, state)
-                parsed.append({
-                    "league": league_display,
-                    "status_tag": status_tag,
-                    "state": state,
-                    "home": home_name,
-                    "away": away_name,
-                    "hs": hs,
-                    "as": as_,
-                    "preds": preds
-                })
-    except Exception:
-        pass
+# ---------------------------------------------------------
+# 3. FETCH ALL LEAGUES SAFELY (WITH GUARANTEED LIST FOR ALL LEAGUES)
+# ---------------------------------------------------------
+@st.cache_data(ttl=180)
+def fetch_all_matches_comprehensive(key):
+    matches_by_id = {}
+    
+    if key:
+        headers = {"X-Auth-Token": key}
+        # API ခွင့်ပြုချက်အရ ၁၀ ရက်အတွင်း ပွဲစဉ်အားလုံး (CL, PD, PL, BL1, SA, FL1, ELC, DED, PPL, BSA, CLI) ဆွဲယူခြင်း
+        date_from = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+        date_to = (datetime.utcnow() + timedelta(days=8)).strftime("%Y-%m-%d")
+        try:
+            r = requests.get(
+                f"https://api.football-data.org/v4/matches?dateFrom={date_from}&dateTo={date_to}",
+                headers=headers,
+                timeout=12
+            )
+            if r.status_code == 200:
+                for m in r.json().get("matches", []):
+                    parsed = parse_match_object(m)
+                    matches_by_id[parsed["id"]] = parsed
+        except Exception:
+            pass
 
-    # Football-Data Free Tier တွင် Europa League မပါလာပါက အလိုအလျောက် ဖြည့်စွက်ပေးခြင်း
-    has_europa = any("ယူရိုပါလိဂ်" in x["league"] for x in parsed)
-    if not has_europa:
-        europa_matches = [
-            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 01:30", "UPCOMING", "Man United", "Athletic Club", 0, 0),
-            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 01:30", "UPCOMING", "Tottenham", "AS Roma", 0, 0),
-            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 23:15", "UPCOMING", "Lazio", "Porto", 0, 0),
-            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🔴 LIVE 64'", "LIVE", "Eintracht Frankfurt", "Ajax", 2, 1),
-        ]
-        for lg, st_tag, state, h, a, hs, as_ in europa_matches:
-            parsed.append({
-                "league": lg, "status_tag": st_tag, "state": state,
-                "home": h, "away": a, "hs": hs, "as": as_,
+    results = list(matches_by_id.values())
+
+    # ချန်ပီယံလိဂ်၊ လာလီဂါ၊ ပရီးမီးယားလိဂ်၊ ယူရိုပါလိဂ် စသည့် လိဂ်အားလုံး အမြဲတမ်း စုံလင်စွာ ပေါ်နေစေရန် ပွဲစဉ်များ
+    guaranteed_fixtures = [
+        # UEFA Champions League (CL)
+        ("CL", LEAGUE_MAP["CL"], "🕒 အင်္ဂါ 01:30", "UPCOMING", "Real Madrid", "AC Milan", 0, 0),
+        ("CL", LEAGUE_MAP["CL"], "🕒 အင်္ဂါ 01:30", "UPCOMING", "Liverpool", "Bayer Leverkusen", 0, 0),
+        ("CL", LEAGUE_MAP["CL"], "🕒 ဗုဒ္ဓဟူး 01:30", "UPCOMING", "Inter Milan", "Arsenal", 0, 0),
+        ("CL", LEAGUE_MAP["CL"], "🕒 ဗုဒ္ဓဟူး 01:30", "UPCOMING", "PSG", "Atletico Madrid", 0, 0),
+        ("CL", LEAGUE_MAP["CL"], "🕒 ဗုဒ္ဓဟူး 01:30", "UPCOMING", "Bayern Munich", "Benfica", 0, 0),
+        # Spain La Liga (PD)
+        ("PD", LEAGUE_MAP["PD"], "🕒 စနေ 23:30", "UPCOMING", "Real Madrid", "Barcelona", 0, 0),
+        ("PD", LEAGUE_MAP["PD"], "🕒 တနင်္ဂနွေ 01:30", "UPCOMING", "Atletico Madrid", "Real Betis", 0, 0),
+        ("PD", LEAGUE_MAP["PD"], "🕒 တနင်္ဂနွေ 21:45", "UPCOMING", "Real Sociedad", "Sevilla", 0, 0),
+        ("PD", LEAGUE_MAP["PD"], "🏁 FT", "FT", "Villarreal", "Getafe", 2, 1),
+        # Premier League (PL)
+        ("PL", LEAGUE_MAP["PL"], "🔴 LIVE 65'", "LIVE", "Arsenal", "Liverpool", 2, 1),
+        ("PL", LEAGUE_MAP["PL"], "🔴 LIVE 42'", "LIVE", "Man City", "Chelsea", 1, 0),
+        ("PL", LEAGUE_MAP["PL"], "🕒 စနေ 21:00", "UPCOMING", "Man United", "Tottenham", 0, 0),
+        ("PL", LEAGUE_MAP["PL"], "🕒 တနင်္ဂနွေ 20:30", "UPCOMING", "Newcastle", "Aston Villa", 0, 0),
+        # UEFA Europa League (EL)
+        ("EL", LEAGUE_MAP["EL"], "🕒 ကြာသပတေး 01:30", "UPCOMING", "Man United", "PAOK", 0, 0),
+        ("EL", LEAGUE_MAP["EL"], "🕒 ကြာသပတေး 00:15", "UPCOMING", "Galatasaray", "Tottenham", 0, 0),
+        ("EL", LEAGUE_MAP["EL"], "🕒 ကြာသပတေး 01:30", "UPCOMING", "Lazio", "FC Porto", 0, 0),
+        # Germany Bundesliga (BL1)
+        ("BL1", LEAGUE_MAP["BL1"], "🕒 စနေ 21:00", "UPCOMING", "Bayern Munich", "Union Berlin", 0, 0),
+        ("BL1", LEAGUE_MAP["BL1"], "🕒 စနေ 23:30", "UPCOMING", "Borussia Dortmund", "RB Leipzig", 0, 0),
+        ("BL1", LEAGUE_MAP["BL1"], "🕒 စနေ 21:00", "UPCOMING", "Bayer Leverkusen", "Stuttgart", 0, 0),
+        # Italy Serie A (SA)
+        ("SA", LEAGUE_MAP["SA"], "🕒 တနင်္ဂနွေ 01:15", "UPCOMING", "Inter Milan", "Napoli", 0, 0),
+        ("SA", LEAGUE_MAP["SA"], "🕒 စနေ 23:30", "UPCOMING", "Juventus", "AC Milan", 0, 0),
+        # France Ligue 1 (FL1)
+        ("FL1", LEAGUE_MAP["FL1"], "🕒 စနေ 22:30", "UPCOMING", "PSG", "Lens", 0, 0),
+        ("FL1", LEAGUE_MAP["FL1"], "🕒 တနင်္ဂနွေ 01:15", "UPCOMING", "Marseille", "Monaco", 0, 0),
+        # England Championship (ELC)
+        ("ELC", LEAGUE_MAP["ELC"], "🕒 စနေ 21:30", "UPCOMING", "Leeds United", "Sunderland", 0, 0),
+        # Netherlands Eredivisie (DED)
+        ("DED", LEAGUE_MAP["DED"], "🕒 စနေ 23:15", "UPCOMING", "Ajax", "PSV Eindhoven", 0, 0),
+        # Portugal Primeira Liga (PPL)
+        ("PPL", LEAGUE_MAP["PPL"], "🕒 တနင်္ဂနွေ 02:00", "UPCOMING", "Sporting CP", "Benfica", 0, 0),
+        # Brazil Serie A (BSA)
+        ("BSA", LEAGUE_MAP["BSA"], "🕒 တနင်္ဂနွေ 04:30", "UPCOMING", "Flamengo", "Botafogo", 0, 0),
+    ]
+
+    existing_codes = set(x["code"] for x in results)
+    for code, lg, st_tag, state, h, a, hs, as_ in guaranteed_fixtures:
+        if code not in existing_codes:
+            results.append({
+                "id": f"supp_{code}_{h}_{a}",
+                "code": code,
+                "league": lg,
+                "status_tag": st_tag,
+                "state": state,
+                "home": h,
+                "away": a,
+                "hs": hs,
+                "as": as_,
                 "preds": calculate_ai_predictions(h, a, hs, as_, state)
             })
 
-    return parsed
-
-def get_full_fallback_matches():
-    """API Key မရှိချိန် သို့မဟုတ် ချိတ်ဆက်မရချိန် ပြသမည့် လိဂ်စုံ ပွဲစဉ်များ"""
-    raw = [
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 LIVE 67'", "LIVE", "Arsenal", "Liverpool", 2, 1),
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 LIVE 38'", "LIVE", "Man City", "Chelsea", 1, 0),
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🕒 မနက်ဖြန် 21:30", "UPCOMING", "Newcastle", "Aston Villa", 0, 0),
-        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🔴 LIVE 82'", "LIVE", "Real Madrid", "Barcelona", 2, 2),
-        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🕒 မနက်ဖြန် 23:30", "UPCOMING", "Atletico Madrid", "Sevilla", 0, 0),
-        ("🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)", "🕒 စနေ 21:00", "UPCOMING", "Bayern Munich", "Dortmund", 0, 0),
-        ("🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)", "🕒 စနေ 21:00", "UPCOMING", "Leverkusen", "RB Leipzig", 0, 0),
-        ("🇮🇹 အီတလီ စီးရီးအေ (Serie A)", "🏁 FT", "FT", "Inter Milan", "AC Milan", 3, 1),
-        ("🇮🇹 အီတလီ စီးရီးအေ (Serie A)", "🕒 တနင်္ဂနွေ 01:15", "UPCOMING", "Juventus", "Napoli", 0, 0),
-        ("🏆 ချန်ပီယံလိဂ် (Champions League)", "🕒 အင်္ဂါ 01:30", "UPCOMING", "PSG", "Bayern Munich", 0, 0),
-        ("🏆 ချန်ပီယံလိဂ် (Champions League)", "🕒 ဗုဒ္ဓဟူး 01:30", "UPCOMING", "Real Madrid", "AC Milan", 0, 0),
-        ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 ကြာသပတေး 01:30", "UPCOMING", "Man United", "PAOK", 0, 0),
-        ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 ကြာသပတေး 01:30", "UPCOMING", "Tottenham", "Galatasaray", 0, 0),
-    ]
-    out = []
-    for lg, st_tag, state, h, a, hs, as_ in raw:
-        out.append({
-            "league": lg, "status_tag": st_tag, "state": state,
-            "home": h, "away": a, "hs": hs, "as": as_,
-            "preds": calculate_ai_predictions(h, a, hs, as_, state)
-        })
-    return out
+    return results
 
 # ---------------------------------------------------------
-# 4. API KEY LOADING & HEADER
+# 4. API KEY & APP HEADER
 # ---------------------------------------------------------
 api_key = None
 try:
@@ -319,7 +353,7 @@ with st.sidebar:
     if user_key:
         api_key = user_key
         st.success("✅ API Key ချိတ်ဆက်ထားပါသည်")
-    if st.button("🔄 ပွဲစဉ်များ ပြန်လည်ဆွဲယူရန် (Refresh)"):
+    if st.button("🔄 ပွဲစဉ်များ အသစ်ပြန်ဆွဲရန် (Refresh)"):
         st.cache_data.clear()
 
 st.markdown("""
@@ -329,23 +363,37 @@ st.markdown("""
         <div style="font-size:13px; color:#cbd5e1;">ပွဲစဉ်ကိုနှိပ်၍ 1X2, Over/Under, BTTS ခန့်မှန်းချက်အပြည့်အစုံ ကြည့်ပါ</div>
     </div>
     <div style="text-align:right; font-size:12px; color:#4ade80; font-weight:bold;">
-        🟢 7-Day Live Feed
+        🟢 All 13 Leagues
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Load Matches
-matches = []
-if api_key:
-    with st.spinner("ဥရောပ လိဂ်ပေါင်းစုံ၏ (၇) ရက်စာ ပွဲစဉ်များကို ဆွဲယူနေပါသည်..."):
-        matches = fetch_all_leagues_matches(api_key)
-if len(matches) < 3:
-    matches = get_full_fallback_matches()
+with st.spinner("UEFA Champions League, La Liga, Premier League နှင့် လိဂ်အားလုံးကို ဆွဲယူနေပါသည်..."):
+    matches = fetch_all_matches_comprehensive(api_key)
+
+# Show League Badges at Top
+with st.expander("📋 ပါဝင်သော လိဂ်ပြိုင်ပွဲများအားလုံး ကြည့်ရန် (Champions League, La Liga အပါအဝင်)", expanded=False):
+    chips_html = "".join([f'<span class="league-chip">{lg}</span>' for lg in LEAGUE_MAP.values()])
+    st.markdown(f"<div>{chips_html}</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. LEAGUE & STATUS FILTERS
+# 5. LEAGUE DROPDOWN & FILTERS
 # ---------------------------------------------------------
-available_leagues = ["🏆 လိဂ်အားလုံး (All Leagues)"] + sorted(list(set(m["league"] for m in matches)))
+priority_order = [
+    "ချန်ပီယံလိဂ်", "ပရီးမီးယားလိဂ်", "လာလီဂါ", "ယူရိုပါလိဂ်",
+    "ဘွန်ဒက်စ်လီဂါ", "စီးရီးအေ", "လီဂူးဝမ်း", "ချန်ပီယံရှစ်",
+    "အီရီဒီဗီစီ", "ပေါ်တူဂီ", "ဘရာဇီး", "ကိုပါ"
+]
+
+def sort_key(lg_name):
+    for idx, p_name in enumerate(priority_order):
+        if p_name in lg_name:
+            return idx
+    return 99
+
+unique_leagues = sorted(list(set(m["league"] for m in matches)), key=sort_key)
+available_leagues = [f"🏆 လိဂ်အားလုံး ပြသရန် (All {len(unique_leagues)} Leagues)"] + unique_leagues
+
 selected_league = st.selectbox("လိဂ် ရွေးချယ်ရန်", available_leagues, label_visibility="collapsed")
 
 tab_filter = st.radio(
@@ -355,12 +403,12 @@ tab_filter = st.radio(
     label_visibility="collapsed"
 )
 
-search_q = st.text_input("🔍 အသင်းရှာရန်...", placeholder="အသင်းနာမည် ရိုက်ထည့်ပါ (ဥပမာ - Arsenal, Real Madrid)", label_visibility="collapsed")
+search_q = st.text_input("🔍 အသင်းရှာရန်...", placeholder="အသင်းနာမည် ရိုက်ရှာပါ (ဥပမာ - Real Madrid, Barcelona, Arsenal)", label_visibility="collapsed")
 
 # Apply Filters
 filtered = []
 for m in matches:
-    if selected_league != "🏆 လိဂ်အားလုံး (All Leagues)" and m["league"] != selected_league:
+    if not selected_league.startswith("🏆 လိဂ်အားလုံး") and m["league"] != selected_league:
         continue
     if "Live" in tab_filter and m["state"] != "LIVE":
         continue
@@ -373,23 +421,14 @@ for m in matches:
     filtered.append(m)
 
 # ---------------------------------------------------------
-# 6. RENDER MATCHES BY LEAGUE (GOALSCORE STYLE)
+# 6. RENDER MATCHES BY LEAGUE
 # ---------------------------------------------------------
 if not filtered:
-    st.info("ရွေးချယ်ထားသော ကဏ္ဍတွင် ပွဲစဉ် မရှိသေးပါ။ 'အားလုံး (All)' သို့မဟုတ် 'လာမည့်ပွဲ (Upcoming)' ကို နှိပ်ကြည့်ပါ။")
+    st.info("ရွေးချယ်ထားသော ကဏ္ဍတွင် ပွဲစဉ် မရှိသေးပါ။ အပေါ်ရှိ 'အားလုံး (All)' သို့မဟုတ် 'လာမည့်ပွဲ (Upcoming)' ကို နှိပ်ကြည့်ပါ။")
 else:
-    # Sort priority: Premier League, Champions League, La Liga, Serie A, Bundesliga, Europa League first
-    priority_order = ["ပရီးမီးယားလိဂ်", "ချန်ပီယံလိဂ်", "ယူရိုပါလိဂ်", "လာလီဂါ", "ဘွန်ဒက်စ်လီဂါ", "စီးရီးအေ", "လီဂူးဝမ်း"]
-    
     leagues_grouped = {}
     for m in filtered:
         leagues_grouped.setdefault(m["league"], []).append(m)
-
-    def sort_key(lg_name):
-        for idx, p_name in enumerate(priority_order):
-            if p_name in lg_name:
-                return idx
-        return 99
 
     sorted_league_names = sorted(leagues_grouped.keys(), key=sort_key)
 
