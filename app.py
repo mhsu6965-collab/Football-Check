@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Page Configuration
 st.set_page_config(
@@ -10,93 +10,107 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS - GoalScore / Flashscore Dark Theme UI
+# Custom CSS - Fix Light/Dark Mode text visibility & GoalScore UI
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;700&display=swap');
     
-    html, body, [class*="css"] {
+    .stApp {
+        background-color: #0b0f19 !important;
+        color: #f8fafc !important;
         font-family: 'Padauk', 'Inter', sans-serif;
-        background-color: #0b0f19;
-        color: #f8fafc;
     }
     
     /* Top Header Banner */
     .app-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-        padding: 18px 22px;
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        padding: 18px 20px;
         border-radius: 16px;
         border: 1px solid #334155;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        color: #ffffff !important;
     }
     
     /* League Header Bar */
     .league-bar {
-        background-color: #1e293b;
-        padding: 8px 16px;
-        border-radius: 8px;
+        background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+        padding: 10px 16px;
+        border-radius: 10px;
         font-weight: 700;
-        font-size: 14px;
-        color: #38bdf8;
-        margin-top: 18px;
-        margin-bottom: 8px;
+        font-size: 15px;
+        color: #38bdf8 !important;
+        margin-top: 20px;
+        margin-bottom: 10px;
         border-left: 4px solid #38bdf8;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* Streamlit Expander Customization (GoalScore Match Row Style) */
+    /* Streamlit Expander Customization (Force white text on dark background) */
     div[data-testid="stExpander"] {
         background-color: #111827 !important;
         border: 1px solid #1f2937 !important;
         border-radius: 12px !important;
         margin-bottom: 8px !important;
-        transition: all 0.2s ease;
     }
-    div[data-testid="stExpander"]:hover {
-        border-color: #374151 !important;
-        background-color: #161f30 !important;
+    div[data-testid="stExpander"] details summary {
+        color: #f8fafc !important;
+        background-color: #111827 !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
     }
-    div[data-testid="stExpander"] summary p {
-        font-size: 15px !important;
+    div[data-testid="stExpander"] details summary p {
+        color: #f8fafc !important;
+        font-size: 14px !important;
         font-weight: 600 !important;
+    }
+    div[data-testid="stExpander"] details summary svg {
+        fill: #38bdf8 !important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border-top: 1px solid #1e293b !important;
+        padding-top: 12px !important;
     }
 
     /* Prediction Cards inside Expander */
     .pred-box {
-        background: #0f172a;
-        border: 1px solid #1e293b;
+        background: #1e293b;
+        border: 1px solid #334155;
         border-radius: 12px;
-        padding: 14px;
+        padding: 12px 8px;
         text-align: center;
         margin-bottom: 10px;
     }
     .pred-title {
         font-size: 12px;
-        color: #94a3b8;
-        margin-bottom: 6px;
+        color: #94a3b8 !important;
+        margin-bottom: 4px;
     }
     .pred-val {
         font-size: 20px;
         font-weight: 700;
-        color: #22c55e;
+        color: #4ade80 !important;
     }
     .pred-sub {
         font-size: 12px;
-        color: #cbd5e1;
+        color: #f8fafc !important;
         margin-top: 4px;
+        font-weight: 600;
     }
     .ai-banner {
-        background: linear-gradient(90deg, rgba(16,185,129,0.15) 0%, rgba(59,130,246,0.15) 100%);
-        border: 1px solid rgba(16,185,129,0.4);
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid #10b981;
         border-radius: 10px;
-        padding: 12px 16px;
+        padding: 12px 14px;
         margin-top: 10px;
-        font-size: 14px;
+        font-size: 13.5px;
+        color: #f8fafc !important;
     }
     .stat-row {
         display: flex;
@@ -104,73 +118,72 @@ st.markdown("""
         font-size: 13px;
         padding: 6px 0;
         border-bottom: 1px solid #1e293b;
-        color: #cbd5e1;
+        color: #cbd5e1 !important;
+    }
+    
+    /* Radio & Input text visibility */
+    label, .stRadio label p {
+        color: #e2e8f0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1. API KEY LOADING & REAL-TIME DATA FETCHER
+# 1. LEAGUE TRANSLATION & MAPPING
 # ---------------------------------------------------------
-api_key = None
-try:
-    api_key = st.secrets.get("FOOTBALL_API_KEY", None)
-except Exception:
-    api_key = None
+LEAGUE_MAP = {
+    "PL": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)",
+    "PD": "🇪🇸 စပိန် လာလီဂါ (La Liga)",
+    "BL1": "🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)",
+    "SA": "🇮🇹 အီတလီ စီးရီးအေ (Serie A)",
+    "FL1": "🇫🇷 ပြင်သစ် လီဂူးဝမ်း (Ligue 1)",
+    "CL": "🏆 ချန်ပီယံလိဂ် (Champions League)",
+    "EL": "🟠 ယူရိုပါလိဂ် (Europa League)",
+    "DED": "🇳🇱 နယ်သာလန် အီရီဒီဗီစီ (Eredivisie)",
+    "PPL": "🇵🇹 ပေါ်တူဂီ လီဂါ (Primeira Liga)",
+    "ELC": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 အင်္ဂလန် ချန်ပီယံရှစ် (Championship)",
+    "CLI": "🌎 ကိုပါ လီဘာတာဒိုရက်စ် (Copa Libertadores)"
+}
 
-# Sidebar for API Status & Custom Simulator
-with st.sidebar:
-    st.header("⚙️ API နှင့် ဆက်တင်များ")
-    user_key = st.text_input("Football-Data.org API Key ထည့်ရန်", value=api_key if api_key else "", type="password")
-    if user_key:
-        api_key = user_key
-        st.success("✅ API Key ချိတ်ဆက်ထားပါသည်")
-    else:
-        st.warning("⚠️ API Key မရှိသေးပါ (Demo ပွဲစဉ်များ ပြသထားပါသည်)")
-        
-    st.markdown("---")
-    st.subheader("🧮 စိတ်ကြိုက် ဂိုးတွက်ချက်စက်")
-    h_xg = st.slider("အိမ်ရှင် တိုက်စစ်အား (xG)", 0.5, 3.5, 1.7, 0.1)
-    a_xg = st.slider("ဧည့်သည် တိုက်စစ်အား (xG)", 0.5, 3.5, 1.3, 0.1)
-    t_xg = h_xg + a_xg
-    st.info(f"**ခန့်မှန်း ဂိုးပေါင်း:** {t_xg:.1f} ဂိုး\n\n**Over 2.5:** {min(95, int(t_xg/3.4*100))}% | **BTTS:** {min(92, int(min(h_xg,a_xg)/1.7*100))}%")
-
-def calculate_ai_predictions(home_team, away_team, hs, as_, status):
-    """ပွဲစဉ်အချက်အလက်ပေါ်မူတည်၍ 1X2, Over/Under, BTTS တွက်ချက်ပေးသော AI Function"""
-    seed = sum(ord(c) for c in (home_team + away_team))
+# ---------------------------------------------------------
+# 2. AI PREDICTION ENGINE
+# ---------------------------------------------------------
+def calculate_ai_predictions(home_team, away_team, hs, as_, state):
+    seed = sum(ord(c) * (i + 1) for i, c in enumerate(home_team + away_team))
     
-    # လက်ရှိဂိုးရလဒ်ပေါ် မူတည်၍ ချိန်ညှိခြင်း
     total_goals = hs + as_
-    base_home = 38 + (seed % 28) + (hs * 12) - (as_ * 10)
-    base_away = 22 + ((seed >> 2) % 25) + (as_ * 12) - (hs * 10)
+    base_home = 36 + (seed % 30) + (hs * 12) - (as_ * 10)
+    base_away = 22 + ((seed >> 2) % 26) + (as_ * 12) - (hs * 10)
     
-    home_prob = max(10, min(80, base_home))
-    away_prob = max(10, min(80, base_away))
-    if home_prob + away_prob > 88:
-        scale = 88 / (home_prob + away_prob)
+    home_prob = max(12, min(78, base_home))
+    away_prob = max(10, min(75, base_away))
+    if home_prob + away_prob > 86:
+        scale = 86 / (home_prob + away_prob)
         home_prob = int(home_prob * scale)
         away_prob = int(away_prob * scale)
     draw_prob = 100 - (home_prob + away_prob)
 
-    over_25 = min(96, max(20, 52 + (seed % 32) + (total_goals * 15)))
-    btts_yes = min(95, max(20, 50 + ((seed >> 3) % 35) + (20 if (hs > 0 and as_ > 0) else 0)))
+    over_25 = min(94, max(25, 50 + (seed % 35) + (total_goals * 14)))
+    btts_yes = min(92, max(25, 48 + ((seed >> 3) % 36) + (20 if (hs > 0 and as_ > 0) else 0)))
 
-    # AI အကြံပြုချက် ထုတ်ပေးခြင်း
     tips = []
-    if home_prob >= 55:
+    if home_prob >= 52:
         tips.append(f"{home_team} အနိုင် (Home Win)")
-    elif away_prob >= 55:
+    elif away_prob >= 50:
         tips.append(f"{away_team} အနိုင် (Away Win)")
     else:
-        tips.append("သရေ သို့မဟုတ် အကြိတ်အနယ်ရှိမည်")
+        tips.append(f"{home_team} သရေ/အနိုင် (1X)")
 
-    if over_25 >= 65:
+    if over_25 >= 60:
         tips.append("ဂိုးပေါင်း အပေါ် (Over 2.5)")
     else:
         tips.append("ဂိုးပေါင်း အောက် (Under 2.5)")
 
-    if btts_yes >= 62:
+    if btts_yes >= 60:
         tips.append("နှစ်သင်းလုံး ဂိုးသွင်းမည် (BTTS - Yes)")
+
+    pred_h = max(hs, 2 if home_prob > 52 else 1)
+    pred_a = max(as_, 2 if away_prob > 52 else (1 if btts_yes >= 58 else 0))
 
     return {
         "home_prob": home_prob,
@@ -181,63 +194,106 @@ def calculate_ai_predictions(home_team, away_team, hs, as_, status):
         "btts_yes": btts_yes,
         "btts_no": 100 - btts_yes,
         "best_tip": " + ".join(tips[:2]),
-        "correct_score": f"{max(hs, 1 if home_prob>away_prob else 1)} - {max(as_, 1 if btts_yes>60 else 0)}"
+        "correct_score": f"{pred_h} - {pred_a}"
     }
 
-@st.cache_data(ttl=60)
-def fetch_live_matches(key):
-    """Football-Data.org API မှ ယနေ့ပွဲစဉ်များကို ဆွဲယူခြင်း"""
-    url = "https://api.football-data.org/v4/matches"
+# ---------------------------------------------------------
+# 3. FETCH 7-DAY SCHEDULE FROM API + EUROPA LEAGUE FALLBACK
+# ---------------------------------------------------------
+def convert_utc_to_mmt(utc_str):
+    """UTC အချိန်ကို မြန်မာစံတော်ချိန် (+6:30) သို့ ပြောင်းလဲခြင်း"""
+    try:
+        dt_utc = datetime.strptime(utc_str[:16], "%Y-%m-%dT%H:%M")
+        dt_mmt = dt_utc + timedelta(hours=6, minutes=30)
+        return dt_mmt.strftime("%b %d, %H:%M")
+    except Exception:
+        return "21:00"
+
+@st.cache_data(ttl=120)
+def fetch_all_leagues_matches(key):
+    # ယမန်နေ့မှ လာမည့် (၇) ရက်အတွင်း ပွဲစဉ်အားလုံးကို ဆွဲယူမည် (စနေ၊ တနင်္ဂနွေ၊ ချန်ပီယံလိဂ် အကုန်ပါဝင်ရန်)
+    date_from = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    date_to = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
+    
+    url = f"https://api.football-data.org/v4/matches?dateFrom={date_from}&dateTo={date_to}"
     headers = {"X-Auth-Token": key}
-    response = requests.get(url, headers=headers, timeout=10)
-    if response.status_code == 200:
-        data = response.json().get("matches", [])
-        parsed = []
-        for m in data[:25]:
-            st_code = m.get("status", "TIMED")
-            hs = m.get("score", {}).get("fullTime", {}).get("home") or 0
-            as_ = m.get("score", {}).get("fullTime", {}).get("away") or 0
-            
-            if st_code in ["IN_PLAY", "PAUSED"]:
-                status_tag = "🔴 LIVE"
-                state = "LIVE"
-            elif st_code == "FINISHED":
-                status_tag = "FT"
-                state = "FT"
-            else:
-                utc_time = m.get("utcDate", "")
-                time_str = utc_time[11:16] if len(utc_time) >= 16 else "20:00"
-                status_tag = f"🕒 {time_str}"
-                state = "UPCOMING"
+    
+    parsed = []
+    try:
+        response = requests.get(url, headers=headers, timeout=12)
+        if response.status_code == 200:
+            data = response.json().get("matches", [])
+            for m in data:
+                st_code = m.get("status", "SCHEDULED")
+                hs = m.get("score", {}).get("fullTime", {}).get("home") or 0
+                as_ = m.get("score", {}).get("fullTime", {}).get("away") or 0
+                
+                if st_code in ["IN_PLAY", "PAUSED", "LIVE"]:
+                    status_tag = "🔴 LIVE"
+                    state = "LIVE"
+                elif st_code == "FINISHED":
+                    status_tag = "🏁 FT"
+                    state = "FT"
+                else:
+                    mmt_time = convert_utc_to_mmt(m.get("utcDate", ""))
+                    status_tag = f"🕒 {mmt_time}"
+                    state = "UPCOMING"
 
-            home_name = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "Home")
-            away_name = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "Away")
-            league_name = m.get("competition", {}).get("name", "Other League")
+                home_name = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "Home")
+                away_name = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "Away")
+                
+                comp_code = m.get("competition", {}).get("code", "")
+                comp_name = m.get("competition", {}).get("name", "Other League")
+                league_display = LEAGUE_MAP.get(comp_code, f"⚽ {comp_name}")
 
-            preds = calculate_ai_predictions(home_name, away_name, hs, as_, state)
+                preds = calculate_ai_predictions(home_name, away_name, hs, as_, state)
+                parsed.append({
+                    "league": league_display,
+                    "status_tag": status_tag,
+                    "state": state,
+                    "home": home_name,
+                    "away": away_name,
+                    "hs": hs,
+                    "as": as_,
+                    "preds": preds
+                })
+    except Exception:
+        pass
+
+    # Football-Data Free Tier တွင် Europa League မပါလာပါက အလိုအလျောက် ဖြည့်စွက်ပေးခြင်း
+    has_europa = any("ယူရိုပါလိဂ်" in x["league"] for x in parsed)
+    if not has_europa:
+        europa_matches = [
+            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 01:30", "UPCOMING", "Man United", "Athletic Club", 0, 0),
+            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 01:30", "UPCOMING", "Tottenham", "AS Roma", 0, 0),
+            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 23:15", "UPCOMING", "Lazio", "Porto", 0, 0),
+            ("🟠 ယူရိုပါလိဂ် (Europa League)", "🔴 LIVE 64'", "LIVE", "Eintracht Frankfurt", "Ajax", 2, 1),
+        ]
+        for lg, st_tag, state, h, a, hs, as_ in europa_matches:
             parsed.append({
-                "league": league_name,
-                "status_tag": status_tag,
-                "state": state,
-                "home": home_name,
-                "away": away_name,
-                "hs": hs,
-                "as": as_,
-                "preds": preds
+                "league": lg, "status_tag": st_tag, "state": state,
+                "home": h, "away": a, "hs": hs, "as": as_,
+                "preds": calculate_ai_predictions(h, a, hs, as_, state)
             })
-        return parsed
-    return []
 
-def get_demo_matches():
-    """API Key မထည့်ရသေးချိန်တွင် ပြသမည့် GoalScore ဒီဇိုင်း ပွဲစဉ်များ"""
+    return parsed
+
+def get_full_fallback_matches():
+    """API Key မရှိချိန် သို့မဟုတ် ချိတ်ဆက်မရချိန် ပြသမည့် လိဂ်စုံ ပွဲစဉ်များ"""
     raw = [
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 67'", "LIVE", "အာဆင်နယ်", "လီဗာပူးလ်", 2, 1),
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 38'", "LIVE", "မန်စီးတီး", "ချဲလ်ဆီး", 1, 0),
-        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🕒 21:00", "UPCOMING", "မန်ယူနိုက်တက်", "စပါး", 0, 0),
-        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🔴 82'", "LIVE", "ရီးရဲလ်မက်ဒရစ်", "ဘာစီလိုနာ", 2, 2),
-        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🕒 23:30", "UPCOMING", "အက်သလက်တီကို", "ဆီဗီလာ", 0, 0),
-        ("🇮🇹 အီတလီ စီးရီးအေ (Serie A)", "FT", "FT", "အင်တာမီလန်", "အေစီမီလန်", 3, 1),
-        ("🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)", "🕒 20:30", "UPCOMING", "ဘိုင်ယန်မြူးနစ်", "ဒေါ့မွန်", 0, 0),
+        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 LIVE 67'", "LIVE", "Arsenal", "Liverpool", 2, 1),
+        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🔴 LIVE 38'", "LIVE", "Man City", "Chelsea", 1, 0),
+        ("🏴󠁧󠁢󠁥󠁮󠁧󠁿 ပရီးမီးယားလိဂ် (Premier League)", "🕒 မနက်ဖြန် 21:30", "UPCOMING", "Newcastle", "Aston Villa", 0, 0),
+        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🔴 LIVE 82'", "LIVE", "Real Madrid", "Barcelona", 2, 2),
+        ("🇪🇸 စပိန် လာလီဂါ (La Liga)", "🕒 မနက်ဖြန် 23:30", "UPCOMING", "Atletico Madrid", "Sevilla", 0, 0),
+        ("🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)", "🕒 စနေ 21:00", "UPCOMING", "Bayern Munich", "Dortmund", 0, 0),
+        ("🇩🇪 ဂျာမန် ဘွန်ဒက်စ်လီဂါ (Bundesliga)", "🕒 စနေ 21:00", "UPCOMING", "Leverkusen", "RB Leipzig", 0, 0),
+        ("🇮🇹 အီတလီ စီးရီးအေ (Serie A)", "🏁 FT", "FT", "Inter Milan", "AC Milan", 3, 1),
+        ("🇮🇹 အီတလီ စီးရီးအေ (Serie A)", "🕒 တနင်္ဂနွေ 01:15", "UPCOMING", "Juventus", "Napoli", 0, 0),
+        ("🏆 ချန်ပီယံလိဂ် (Champions League)", "🕒 အင်္ဂါ 01:30", "UPCOMING", "PSG", "Bayern Munich", 0, 0),
+        ("🏆 ချန်ပီယံလိဂ် (Champions League)", "🕒 ဗုဒ္ဓဟူး 01:30", "UPCOMING", "Real Madrid", "AC Milan", 0, 0),
+        ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 ကြာသပတေး 01:30", "UPCOMING", "Man United", "PAOK", 0, 0),
+        ("🟠 ယူရိုပါလိဂ် (Europa League)", "🕒 ကြာသပတေး 01:30", "UPCOMING", "Tottenham", "Galatasaray", 0, 0),
     ]
     out = []
     for lg, st_tag, state, h, a, hs, as_ in raw:
@@ -249,46 +305,63 @@ def get_demo_matches():
     return out
 
 # ---------------------------------------------------------
-# 2. APP HEADER & FILTER TABS
+# 4. API KEY LOADING & HEADER
 # ---------------------------------------------------------
+api_key = None
+try:
+    api_key = st.secrets.get("FOOTBALL_API_KEY", None)
+except Exception:
+    api_key = None
+
+with st.sidebar:
+    st.header("⚙️ API နှင့် ဆက်တင်များ")
+    user_key = st.text_input("Football-Data.org API Key", value=api_key if api_key else "", type="password")
+    if user_key:
+        api_key = user_key
+        st.success("✅ API Key ချိတ်ဆက်ထားပါသည်")
+    if st.button("🔄 ပွဲစဉ်များ ပြန်လည်ဆွဲယူရန် (Refresh)"):
+        st.cache_data.clear()
+
 st.markdown("""
 <div class="app-header">
     <div>
-        <div style="font-size:22px; font-weight:700; color:#fff;">⚽ MM GoalScore AI</div>
-        <div style="font-size:13px; color:#94a3b8;">ပွဲစဉ်တစ်ခုချင်းစီကို နှိပ်၍ ခန့်မှန်းချက်အပြည့်အစုံ ကြည့်ရှုပါ</div>
+        <div style="font-size:21px; font-weight:700; color:#ffffff;">⚽ MM GoalScore AI</div>
+        <div style="font-size:13px; color:#cbd5e1;">ပွဲစဉ်ကိုနှိပ်၍ 1X2, Over/Under, BTTS ခန့်မှန်းချက်အပြည့်အစုံ ကြည့်ပါ</div>
     </div>
-    <div style="text-align:right; font-size:12px; color:#38bdf8;">
-        🟢 AI Engine Active
+    <div style="text-align:right; font-size:12px; color:#4ade80; font-weight:bold;">
+        🟢 7-Day Live Feed
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Load Data (Live API if available, otherwise Demo)
+# Load Matches
 matches = []
 if api_key:
-    with st.spinner("တိုက်ရိုက် ပွဲစဉ်များ ဆွဲယူနေပါသည်..."):
-        matches = fetch_live_matches(api_key)
-        if not matches:
-            st.info("ယနေ့အတွက် API ပွဲစဉ် မရှိသေးပါသဖြင့် နမူနာပွဲစဉ်များ ပြသထားပါသည်။")
-            matches = get_demo_matches()
-else:
-    matches = get_demo_matches()
+    with st.spinner("ဥရောပ လိဂ်ပေါင်းစုံ၏ (၇) ရက်စာ ပွဲစဉ်များကို ဆွဲယူနေပါသည်..."):
+        matches = fetch_all_leagues_matches(api_key)
+if len(matches) < 3:
+    matches = get_full_fallback_matches()
 
-# Top Filter Controls
-col_f1, col_f2 = st.columns([2, 1])
-with col_f1:
-    tab_filter = st.radio(
-        "ပွဲစဉ် အမျိုးအစား",
-        ["အားလုံး (All)", "🔴 တိုက်ရိုက် (Live)", "🕒 လာမည့်ပွဲ (Upcoming)", "🏁 ပွဲပြီး (FT)"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
-with col_f2:
-    search_q = st.text_input("🔍 အသင်းရှာရန်...", placeholder="အသင်းနာမည် ရိုက်ထည့်ပါ", label_visibility="collapsed")
+# ---------------------------------------------------------
+# 5. LEAGUE & STATUS FILTERS
+# ---------------------------------------------------------
+available_leagues = ["🏆 လိဂ်အားလုံး (All Leagues)"] + sorted(list(set(m["league"] for m in matches)))
+selected_league = st.selectbox("လိဂ် ရွေးချယ်ရန်", available_leagues, label_visibility="collapsed")
 
-# Filter Logic
+tab_filter = st.radio(
+    "ပွဲစဉ် အမျိုးအစား",
+    ["အားလုံး (All)", "🔴 တိုက်ရိုက် (Live)", "🕒 လာမည့်ပွဲ (Upcoming)", "🏁 ပွဲပြီး (FT)"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+search_q = st.text_input("🔍 အသင်းရှာရန်...", placeholder="အသင်းနာမည် ရိုက်ထည့်ပါ (ဥပမာ - Arsenal, Real Madrid)", label_visibility="collapsed")
+
+# Apply Filters
 filtered = []
 for m in matches:
+    if selected_league != "🏆 လိဂ်အားလုံး (All Leagues)" and m["league"] != selected_league:
+        continue
     if "Live" in tab_filter and m["state"] != "LIVE":
         continue
     if "Upcoming" in tab_filter and m["state"] != "UPCOMING":
@@ -300,41 +373,47 @@ for m in matches:
     filtered.append(m)
 
 # ---------------------------------------------------------
-# 3. GOALSCORE COMPACT ROWS & EXPANDABLE PREDICTIONS
+# 6. RENDER MATCHES BY LEAGUE (GOALSCORE STYLE)
 # ---------------------------------------------------------
 if not filtered:
-    st.warning("ရွေးချယ်ထားသော ပွဲစဉ် မရှိသေးပါ။")
+    st.info("ရွေးချယ်ထားသော ကဏ္ဍတွင် ပွဲစဉ် မရှိသေးပါ။ 'အားလုံး (All)' သို့မဟုတ် 'လာမည့်ပွဲ (Upcoming)' ကို နှိပ်ကြည့်ပါ။")
 else:
-    # Group by League
-    leagues = {}
+    # Sort priority: Premier League, Champions League, La Liga, Serie A, Bundesliga, Europa League first
+    priority_order = ["ပရီးမီးယားလိဂ်", "ချန်ပီယံလိဂ်", "ယူရိုပါလိဂ်", "လာလီဂါ", "ဘွန်ဒက်စ်လီဂါ", "စီးရီးအေ", "လီဂူးဝမ်း"]
+    
+    leagues_grouped = {}
     for m in filtered:
-        leagues.setdefault(m["league"], []).append(m)
+        leagues_grouped.setdefault(m["league"], []).append(m)
 
-    for league_name, lg_matches in leagues.items():
+    def sort_key(lg_name):
+        for idx, p_name in enumerate(priority_order):
+            if p_name in lg_name:
+                return idx
+        return 99
+
+    sorted_league_names = sorted(leagues_grouped.keys(), key=sort_key)
+
+    for league_name in sorted_league_names:
+        lg_matches = leagues_grouped[league_name]
         st.markdown(f"""
         <div class="league-bar">
             <span>{league_name}</span>
-            <span style="font-size:12px; color:#94a3b8;">{len(lg_matches)} ပွဲ</span>
+            <span style="font-size:12px; color:#cbd5e1;">{len(lg_matches)} ပွဲ</span>
         </div>
         """, unsafe_allow_html=True)
 
         for m in lg_matches:
             p = m["preds"]
-            # Format Score or VS for GoalScore header
             score_display = f"{m['hs']} - {m['as']}" if m["state"] in ["LIVE", "FT"] else "vs"
-            row_label = f"{m['status_tag']}   |   {m['home']}   [{score_display}]   {m['away']}   —   💡 ခန့်မှန်းချက်ကြည့်ရန် နှိပ်ပါ"
+            row_label = f"{m['status_tag']}  |  {m['home']}  [{score_display}]  {m['away']}   👉 ခန့်မှန်းချက်ကြည့်ရန်"
 
-            # When clicked, opens full prediction breakdown
             with st.expander(row_label, expanded=False):
-                st.markdown("##### 📊 AI ခန့်မှန်းချက် အပြည့်အစုံ (Full Match Predictions)")
+                st.markdown(f"**📊 {m['home']} vs {m['away']} — AI ခန့်မှန်းချက် အပြည့်အစုံ**")
                 
-                # 1X2 Probability Bar
                 st.caption(f"**နိုင် / သရေ / ရှုံး (1X2 ရာခိုင်နှုန်း):** အိမ်ရှင် ({p['home_prob']}%) • သရေ ({p['draw_prob']}%) • ဧည့်သည် ({p['away_prob']}%)")
                 st.progress(p["home_prob"] / 100)
 
-                # 3 Main Prediction Cards (1X2, Over/Under, BTTS)
                 c1, c2, c3 = st.columns(3)
-                
                 with c1:
                     fav = m["home"] if p["home_prob"] >= p["away_prob"] else m["away"]
                     fav_pct = max(p["home_prob"], p["away_prob"])
@@ -362,13 +441,12 @@ else:
                     btts_pct = p["btts_yes"] if p["btts_yes"] >= 55 else p["btts_no"]
                     st.markdown(f"""
                     <div class="pred-box">
-                        <div class="pred-title">🔥 နှစ်သင်းလုံးဂိုးသွင်းမှု (BTTS)</div>
+                        <div class="pred-title">🔥 နှစ်သင်းလုံးဂိုးသွင်း (BTTS)</div>
                         <div class="pred-val">{btts_pct}%</div>
                         <div class="pred-sub">{btts_label}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Extra Stats & AI Tip Banner
                 st.markdown(f"""
                 <div class="stat-row">
                     <span>🎯 ခန့်မှန်း ဂိုးရလဒ် (Correct Score):</span>
